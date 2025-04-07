@@ -45,47 +45,38 @@ open class RSIShareViewController: SLComposeServiceViewController {
         if let content = extensionContext!.inputItems[0] as? NSExtensionItem {
             if let contents = content.attachments {
                 for (index, attachment) in (contents).enumerated() {
-                    for type in SharedMediaType.allCases {
-                        if attachment.hasItemConformingToTypeIdentifier(type.toUTTypeIdentifier) {
-                            attachment.loadItem(forTypeIdentifier: type.toUTTypeIdentifier) { [weak self] data, error in
-                                guard let this = self, error == nil else {
-                                    self?.dismissWithError()
-                                    return
-                                }
-                                switch type {
-                                case .text:
-                                    if let text = data as? String {
-                                        this.handleMedia(forLiteral: text,
-                                                         type: type,
-                                                         index: index,
-                                                         content: content)
+                    if let itemProvider = attachment as? NSItemProvider {
+                        for type in SharedMediaType.allCases {
+                            if itemProvider.hasItemConformingToTypeIdentifier(type.toUTTypeIdentifier) {
+                                itemProvider.loadItem(forTypeIdentifier: type.toUTTypeIdentifier, options: nil) { [weak self] (data: Any?, error: Error?) in
+                                    guard let this = self, error == nil else {
+                                        self?.dismissWithError()
+                                        return
                                     }
-                                case .url:
-                                    if let url = data as? URL {
-                                        this.handleMedia(forLiteral: url.absoluteString,
-                                                         type: type,
-                                                         index: index,
-                                                         content: content)
-                                    }
-                                default:
-                                    if let url = data as? URL {
-                                        this.handleMedia(forFile: url,
-                                                         type: type,
-                                                         index: index,
-                                                         content: content)
-                                    }
-                                    else if let image = data as? UIImage {
-                                        this.handleMedia(forUIImage: image,
-                                                         type: type,
-                                                         index: index,
-                                                         content: content)
+                                    // Process data based on the type...
+                                    switch type {
+                                    case .text:
+                                        if let text = data as? String {
+                                            this.handleMedia(forLiteral: text, type: type, index: index, content: content)
+                                        }
+                                    case .url:
+                                        if let url = data as? URL {
+                                            this.handleMedia(forLiteral: url.absoluteString, type: type, index: index, content: content)
+                                        }
+                                    default:
+                                        if let url = data as? URL {
+                                            this.handleMedia(forFile: url, type: type, index: index, content: content)
+                                        } else if let image = data as? UIImage {
+                                            this.handleMedia(forUIImage: image, type: type, index: index, content: content)
+                                        }
                                     }
                                 }
+                                break
                             }
-                            break
                         }
                     }
                 }
+
             }
         }
     }
@@ -252,8 +243,8 @@ open class RSIShareViewController: SLComposeServiceViewController {
             if FileManager.default.fileExists(atPath: dstURL.path) {
                 try FileManager.default.removeItem(at: dstURL)
             }
-            let pngData = image.pngData();
-            try pngData?.write(to: dstURL);
+            let pngData = UIImagePNGRepresentation(image)
+            try pngData?.write(to: dstURL)
             return true;
         } catch (let error){
             print("Cannot write to temp file: \(error)");
@@ -289,8 +280,8 @@ open class RSIShareViewController: SLComposeServiceViewController {
         //        let scale = UIScreen.main.scale
         assetImgGenerate.maximumSize =  CGSize(width: 360, height: 360)
         do {
-            let img = try assetImgGenerate.copyCGImage(at: CMTimeMakeWithSeconds(600, preferredTimescale: 1), actualTime: nil)
-            try UIImage(cgImage: img).pngData()?.write(to: thumbnailPath)
+            let img = try assetImgGenerate.copyCGImage(at: CMTimeMakeWithSeconds(600, 1), actualTime: nil)
+            try UIImagePNGRepresentation(UIImage(cgImage: img))?.write(to: thumbnailPath)
             saved = true
         } catch {
             saved = false
