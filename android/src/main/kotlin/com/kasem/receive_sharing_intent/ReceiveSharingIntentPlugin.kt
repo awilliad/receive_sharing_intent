@@ -118,13 +118,13 @@ class ReceiveSharingIntentPlugin : FlutterPlugin, ActivityAware, MethodCallHandl
             }
 
             Intent.ACTION_SEND -> {
-                val uri = intent.parcelable<Uri>(Intent.EXTRA_STREAM)
+                val uri = intent.getParcelable(Intent.EXTRA_STREAM, Uri::class.java)
                 val text = intent.getStringExtra(Intent.EXTRA_TEXT)
                 toJsonObject(uri, text, intent.type)?.let { JSONArray(listOf(it)) }
             }
 
             Intent.ACTION_SEND_MULTIPLE -> {
-                val uris = intent.parcelableArrayList<Uri>(Intent.EXTRA_STREAM)
+                val uris = intent.getParcelableArrayList(Intent.EXTRA_STREAM, Uri::class.java)
                 val mimeTypes = intent.getStringArrayExtra(Intent.EXTRA_MIME_TYPES)
 
                 uris?.mapIndexedNotNull { index, uri ->
@@ -207,13 +207,21 @@ class ReceiveSharingIntentPlugin : FlutterPlugin, ActivityAware, MethodCallHandl
         return false
     }
 
-    inline fun <reified T : Parcelable> Intent.parcelable(key: String): T? = when {
-        Build.VERSION.SDK_INT >= 33 -> getParcelableExtra(key, T::class.java)
-        else -> @Suppress("DEPRECATION") getParcelableExtra(key) as? T
+    fun <T : Parcelable> Intent.getParcelable(key: String, clazz: Class<T>): T? {
+        return if (Build.VERSION.SDK_INT >= 33) {
+            getParcelableExtra(key, clazz)
+        } else {
+            @Suppress("DEPRECATION")
+            getParcelableExtra(key) as? T
+        }
     }
 
-    inline fun <reified T : Parcelable> Intent.parcelableArrayList(key: String): ArrayList<T>? = when {
-        Build.VERSION.SDK_INT >= 33 -> getParcelableArrayListExtra(key, T::class.java)
-        else -> @Suppress("DEPRECATION") getParcelableArrayListExtra(key)
+    fun <T : Parcelable> Intent.getParcelableArrayList(key: String, clazz: Class<T>): ArrayList<T>? {
+        return if (Build.VERSION.SDK_INT >= 33) {
+            getParcelableArrayListExtra(key, clazz)
+        } else {
+            @Suppress("DEPRECATION")
+            getParcelableArrayListExtra(key)
+        }
     }
 }
